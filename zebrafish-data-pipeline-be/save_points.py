@@ -1,36 +1,49 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 import os, base64
 from flask_cors import CORS
-import psycopg2 as pg
+import pandas as pd
 
 import tempfile
 
 app = Flask(__name__)
 
-def get_db_connection():
-    try:
-        conn = pg.connect(host='localhost',
-                                database='zebrafish_test',
-                                options="-c search_path=zebrafishschema"
-                                )
-        return conn
-    except pg.Error:  
-        return False  
+header = [('scorer','' , '', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter'),
+            ('bodyparts', '', '', 'head', 'head', 'tail_1', 'tail_1', 'tail_2', 'tail_2', 'tail_3', 'tail_3', 'tail_4', 'tail_4', 'tail_5', 'tail_5', 'tail_6', 'tail_6', 'tail_7', 'tail_7', 'tail_8', 'tail_8', 'tail_9', 'tail_9'),
+            ('coords', '', '', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y')]
 
 CORS(app) 
-@app.route('/', methods=['POST'])
-def extract_images():
-    fish_video = request.form['fish_video']
-    img = request.form['image']
+@app.route('/get_csv', methods=['POST'])
+def generate_csv():
+    data = []
+    data.extend(header)
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('INSERT INTO Video (fish_video, img) VALUES (%s, %s)',
-            (fish_video, img))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return 'Success!'
+    coordinate_data = request.get_json()
+    for video in coordinate_data:
+        for image in coordinate_data[video]:
+            data_entry = ['labeled-data', video]
+            data_entry.append(image['image'])
+            data_entry.append(image['path'])
+            coordinates = image['coordinates']
+
+            i = 0
+            while i < min(10, len(coordinates)):
+                data_entry.append(coordinates[i])
+                i += 1
+            
+            while i < 10:
+                data_entry.append('')
+                i += 1
+            
+            data.append(data_entry)
+    print(coordinate_data)
+
+
+    df = pd.DataFrame(data)
+    resp = make_response(df.to_csv(index=False, header=False))
+    resp.headers["Content-Disposition"] = "attachment; filename=export.csv"
+    resp.headers["Content-Type"] = "text/csv"
+    return resp
+
 
 # @app.route('/get_images', methods=['GET'])
 
