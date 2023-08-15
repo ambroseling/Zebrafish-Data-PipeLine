@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify,make_response
+from flask import Flask, request, jsonify, send_file, make_response
+import os, base64, zipfile
 
-import os, base64
 from flask_cors import CORS  # Import the CORS extension
+from io import BytesIO
 
 import pandas as pd
 
@@ -25,12 +26,13 @@ def save_json():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+      
 @app.route('/extract_images', methods=['POST'])
 def extract_images():
     # Get the uploaded videos from the request
     #data = request.get_json()
     #print("RECEIVED DATA: ",data)
-    data_path =  "/Users/ambroseling/Desktop/zebrafish-data-pipeline/data"
+    data_path =  "../data"
     uploaded_files = request.files.getlist('videos')
     # Sample rate (number of frames to skip between each extracted frame)
     print("SAMPLE RATE:")
@@ -65,9 +67,10 @@ def extract_images():
         # Return the paths of extracted images
         return jsonify(extracted_images)
 
+      
 @app.route('/get_images', methods=['GET'])
 def get_images():
-    image_directory = '/Users/ambroseling/Desktop/zebrafish-data-pipeline/data'
+    image_directory = '../data'
     image_data_list = []
 
     # Iterate through the image files in the directory
@@ -84,11 +87,33 @@ def get_images():
 
             # Append the base64-encoded image data to the list
             image_data_list.append({'filename': filename, 'data': base64_image})
-            os.remove(image_path)
+            # os.remove(image_path)
 
     # Return the list of base64-encoded image data in the JSON response
     return jsonify({'images': image_data_list})
 
+  
+@app.route('/download_images', methods=['GET'])
+def download_images():
+    image_directory = '../data'
+
+    memory_file = BytesIO()
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for filename in os.listdir(image_directory):
+            if filename.endswith('.jpg') or filename.endswith('.png'):
+                image_path = os.path.join(image_directory, filename)
+                zipf.write(image_path, os.path.relpath(image_path, image_directory))
+                os.remove(image_path)
+
+    memory_file.seek(0)
+    return send_file(
+        memory_file,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name='extracted_frames.zip'
+    )
+  
+  
 header = [('scorer','' , '', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter', 'experimenter'),
             ('bodyparts', '', '', 'head', 'head', 'tail_1', 'tail_1', 'tail_2', 'tail_2', 'tail_3', 'tail_3', 'tail_4', 'tail_4', 'tail_5', 'tail_5', 'tail_6', 'tail_6', 'tail_7', 'tail_7', 'tail_8', 'tail_8', 'tail_9', 'tail_9'),
             ('coords', '', '', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y', 'x', 'y')]
@@ -123,13 +148,6 @@ def generate_csv():
     resp.headers["Content-Disposition"] = "attachment; filename=export.csv"
     resp.headers["Content-Type"] = "text/csv"
     return resp
-
-
-# @app.route('/get_images', methods=['GET'])
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
 
 
 if __name__ == '__main__':
