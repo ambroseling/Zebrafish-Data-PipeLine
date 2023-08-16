@@ -32,7 +32,7 @@ def extract_images():
     # Get the uploaded videos from the request
     #data = request.get_json()
     #print("RECEIVED DATA: ",data)
-    data_path =  "../data"
+    data_path =  "./data"
     uploaded_files = request.files.getlist('videos')
     # Sample rate (number of frames to skip between each extracted frame)
     print("SAMPLE RATE:")
@@ -70,7 +70,7 @@ def extract_images():
       
 @app.route('/get_images', methods=['GET'])
 def get_images():
-    image_directory = '../data'
+    image_directory = './data'
     image_data_list = []
 
     # Iterate through the image files in the directory
@@ -95,7 +95,7 @@ def get_images():
   
 @app.route('/download_images', methods=['GET'])
 def download_images():
-    image_directory = '../data'
+    image_directory = './data'
 
     memory_file = BytesIO()
     with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zipf:
